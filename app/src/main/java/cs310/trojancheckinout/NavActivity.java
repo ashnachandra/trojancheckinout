@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,7 +38,12 @@ import cs310.trojancheckinout.models.User;
 public class NavActivity extends AppCompatActivity {
     FirebaseFirestore db = FirebaseFirestore.getInstance();
     private DocumentSnapshot userDoc;
-    private TextView errortxt;
+
+    private LinearLayout popupMsg;
+    public TextView close_message;
+    private Button closePopupbutton;
+
+    public String message = "";
     public static final int GET_FROM_GALLERY = 1;
     String role = "";
     Map<String,String> map = new HashMap<String, String>();
@@ -49,7 +55,10 @@ public class NavActivity extends AppCompatActivity {
         Button profileButton = (Button) findViewById(R.id.profile_button);
         Button showBuildingsButton = (Button) findViewById(R.id.button);
         Button csvButton = (Button) findViewById(R.id.csv_button);
-        errortxt = findViewById(R.id.errortxt);
+      //  errortxt = findViewById(R.id.errortxt);
+        popupMsg = findViewById(R.id.pop_up_csv);
+        close_message = findViewById(R.id.close_message_csv);
+        closePopupbutton = findViewById(R.id.closePopupbutton_csv);
 
         DocumentReference docIdRef2 = db.collection("users").document(sharedData.getCurr_email());
 
@@ -99,27 +108,24 @@ public class NavActivity extends AppCompatActivity {
             }
         });
 
-        //csv
-//        csvButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                readCsv();
-//            }
-//        });
 
-        //
+
         csvButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
                 Intent mediaIntent = new Intent(Intent.ACTION_GET_CONTENT);
                 mediaIntent.setType("*/*"); // Set MIME type as per requirement
                 startActivityForResult(mediaIntent,GET_FROM_GALLERY);
+
+
             }
         });
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
         super.onActivityResult(requestCode, resultCode, data);
         Log.d("Doc", "browse file");
 
@@ -158,6 +164,18 @@ public class NavActivity extends AppCompatActivity {
                     Log.d("iterator", pair.getKey() + " = " + pair.getValue());
                     checkBuildingMap((String)pair.getKey(), (String)pair.getValue());
                 }
+
+                popupMsg.setVisibility(View.VISIBLE);
+
+                closePopupbutton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        popupMsg.setVisibility(View.INVISIBLE);
+                        close_message.setText("");
+
+                        map.clear();
+                    }
+                });
             }
 
         }else{
@@ -165,40 +183,6 @@ public class NavActivity extends AppCompatActivity {
         }
     }
 
-
-//    public void readCsv(){
-//        try {
-//
-//            CSVReader reader = new CSVReader(new InputStreamReader(getResources().openRawResource(R.raw.data)));//Specify asset file name
-////            String [] nextLine;
-////            InputStream is = getResources().openRawResource(R.raw.data);
-////            BufferedReader reader = new BufferedReader(
-////                    new InputStreamReader(is, Charset.forName("UTF-8")));
-//            String[] line = reader.readNext();
-//            while ((line = reader.readNext()) != null) {
-//                // Split the line into different tokens (using the comma as a separator).
-//                // String[] tokens = line.split(",");
-//                Log.d("FILE READER CSV","CSV " + line[0] + line[1]);
-//
-//                String building_name = line[0];
-//                String building_cap = line[1];
-//                map.put(building_name, building_cap);
-//
-//            }
-//
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            Toast.makeText(this, "File not formatted properly", Toast.LENGTH_SHORT).show();
-//        }
-//
-//        Iterator it = map.entrySet().iterator();
-//        while (it.hasNext()) {
-//            Map.Entry pair = (Map.Entry)it.next();
-//            Log.d("iterator", pair.getKey() + " = " + pair.getValue());
-//            checkBuildingMap((String)pair.getKey(), (String)pair.getValue());
-//        }
-//
-//    }
 
     public void checkBuildingMap(String building_name, String building_cap){
         // check if building exists in db
@@ -210,8 +194,8 @@ public class NavActivity extends AppCompatActivity {
                     DocumentSnapshot document = task.getResult();
                     if (!document.exists()) {
                         // SHOW ERROR
-                        String currErr = (String) errortxt.getText();
-                        errortxt.setText(currErr + "\n" + building_name + " Building does not exist - Check file");
+                        String currErr = (String) close_message.getText();
+                        close_message.setText(currErr + "\n" + building_name + " Building does not exist - Check file");
                         Log.d("document", "Document does not exist!");
                     }
 
@@ -220,8 +204,10 @@ public class NavActivity extends AppCompatActivity {
                         double curcap = Double.parseDouble(cur_cap);
                         int newbuildingcap = Integer.parseInt(building_cap);
                         if(newbuildingcap < curcap){
-                            String currErr = (String) errortxt.getText();
-                            errortxt.setText(currErr + "\n" + building_name + "Current building capacity is greater than new capacity - Check file");
+                            String currErr = (String) close_message.getText();
+                            close_message.setText(currErr + "\n" + building_name + "Current building capacity is greater than new capacity - Check file");
+                            Log.d("document", "check file cannot update");
+
                         }
                         else{
 
@@ -235,6 +221,8 @@ public class NavActivity extends AppCompatActivity {
                 }
             }
         });
+
+
     }
     public void changeDatabaseCapacity(String newcap, String bName ){
         Log.d("in change cap", "in change cap " + bName + " " + newcap);
@@ -243,9 +231,11 @@ public class NavActivity extends AppCompatActivity {
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {
-                        String currErr = (String) errortxt.getText();
-                        errortxt.setText(currErr + "\n" + bName + " Capacity changed");
-                        Log.d("Doc", "DocumentSnapshot successfully written! - change capacity");
+                        String currErr = (String) close_message.getText();
+                       // message =  currErr + "\n" + bName + " Capacity changed";
+                        close_message.setText(currErr + "\n" + bName + " Capacity changed");
+
+                        Log.d("Doc", "DocumentSnapshot successfully written! - change capacity asdf" +  message);
                     }
                 })
                 .addOnFailureListener(new OnFailureListener() {
